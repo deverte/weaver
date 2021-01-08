@@ -4,7 +4,6 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"path/filepath"
 
 	"github.com/1set/gut/yos"
 	"github.com/deverte/weaver/internal/utils"
@@ -24,6 +23,13 @@ var installCmd = &cobra.Command{
 		appManifest, app, _ := utils.FindApp(args[0])
 		appManifest.Parse()
 
+		// Pre-install scripts
+		for _, script := range appManifest.Install.Scripts {
+			scriptPath := utils.ExpandPath(app.Path, script.Path)
+			if script.Type == "pre" {
+				utils.RunScript(scriptPath)
+			}
+		}
 		// Symlink
 		for _, symlink := range appManifest.Install.Symlinks {
 			// !!! Add recursive directory creation if dir is symlinking
@@ -68,23 +74,11 @@ var installCmd = &cobra.Command{
 				}
 			}
 		}
-		// Scripts
+		// Post-install scripts
 		for _, script := range appManifest.Install.Scripts {
-			// !!! Make one function for install and uninstall
-			// !!! Add support for another scripts (.cmd, .bat and etc.)
-			// !!! Add pre- and post-install scripts
 			scriptPath := utils.ExpandPath(app.Path, script.Path)
-			if _, err := os.Stat(scriptPath); !os.IsNotExist(err) {
-				if filepath.Ext(scriptPath) == ".ps1" {
-					powershellCmd := exec.Command(
-						"powershell", scriptPath,
-					)
-
-					err := powershellCmd.Run()
-					if err != nil {
-						log.Fatal(err)
-					}
-				}
+			if script.Type == "post" || script.Type == "" {
+				utils.RunScript(scriptPath)
 			}
 		}
 		// !!! Add installation complete.

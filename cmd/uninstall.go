@@ -4,7 +4,6 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"path/filepath"
 
 	"github.com/deverte/weaver/internal/utils"
 	"github.com/spf13/cobra"
@@ -24,6 +23,13 @@ var uninstallCmd = &cobra.Command{
 		appManifest, app, _ := utils.FindApp(args[0])
 		appManifest.Parse()
 
+		// Pre-uninstall scripts
+		for _, script := range appManifest.Uninstall.Scripts {
+			scriptPath := utils.ExpandPath(app.Path, script.Path)
+			if script.Type == "pre" {
+				utils.RunScript(scriptPath)
+			}
+		}
 		// Symlink
 		for _, symlink := range appManifest.Uninstall.Symlinks {
 			os.Remove(symlink.Target)
@@ -46,22 +52,11 @@ var uninstallCmd = &cobra.Command{
 				log.Fatal(err)
 			}
 		}
-		// Scripts
+		// Post-uninstall scripts
 		for _, script := range appManifest.Uninstall.Scripts {
-			// !!! Make one function for install and uninstall
-			// !!! Add pre- and post-install scripts
 			scriptPath := utils.ExpandPath(app.Path, script.Path)
-			if _, err := os.Stat(scriptPath); !os.IsNotExist(err) {
-				if filepath.Ext(scriptPath) == ".ps1" {
-					powershellCmd := exec.Command(
-						"powershell", scriptPath,
-					)
-
-					err := powershellCmd.Run()
-					if err != nil {
-						log.Fatal(err)
-					}
-				}
+			if script.Type == "post" || script.Type == "" {
+				utils.RunScript(scriptPath)
 			}
 		}
 		// !!! Add uninstallation complete.

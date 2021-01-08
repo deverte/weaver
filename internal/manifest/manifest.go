@@ -34,6 +34,7 @@ type AppManifest struct {
 			Path string
 		}
 		Scripts []struct {
+			Type string
 			Path string
 		}
 	}
@@ -48,6 +49,7 @@ type AppManifest struct {
 			Path string
 		}
 		Scripts []struct {
+			Type string
 			Path string
 		}
 	}

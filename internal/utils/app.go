@@ -4,7 +4,9 @@ Package utils implements uncategorized helper functions.
 package utils
 
 import (
+	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 
 	"github.com/deverte/weaver/internal/fs"
@@ -44,4 +46,21 @@ func FindApp(name string) (manifest.AppManifest, fs.App, fs.Tangle) {
 func ExpandPath(rootPath string, relativePath string) string {
 	// !!! Add error checking
 	return filepath.Join(rootPath, relativePath[1:])
+}
+
+// RunScript ...
+func RunScript(scriptPath string) {
+	// !!! Add support for another scripts (.cmd, .bat and etc.)
+	if _, err := os.Stat(scriptPath); !os.IsNotExist(err) {
+		if filepath.Ext(scriptPath) == ".ps1" {
+			powershellCmd := exec.Command(
+				"powershell", scriptPath,
+			)
+
+			err := powershellCmd.Run()
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+	}
 }
