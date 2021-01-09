@@ -50,7 +50,6 @@ func ExpandPath(rootPath string, relativePath string) string {
 
 // RunScript ...
 func RunScript(scriptPath string) {
-	// !!! Add support for another scripts (.cmd, .bat and etc.)
 	if _, err := os.Stat(scriptPath); !os.IsNotExist(err) {
 		if filepath.Ext(scriptPath) == ".ps1" {
 			powershellCmd := exec.Command(
@@ -61,6 +60,19 @@ func RunScript(scriptPath string) {
 			if err != nil {
 				log.Fatal(err)
 			}
+		} else if filepath.Ext(scriptPath) == ".cmd" || filepath.Ext(scriptPath) == ".bat" {
+			cmdCmd := exec.Command(
+				"cmd", "/c", scriptPath,
+			)
+
+			err := cmdCmd.Run()
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else {
+			log.Fatal(
+				"\"" + filepath.Ext(scriptPath) + "\" script is not supported.",
+			)
 		}
 	}
 }

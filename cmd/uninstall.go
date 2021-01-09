@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"os/exec"
@@ -21,44 +22,52 @@ var uninstallCmd = &cobra.Command{
 	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		appManifest, app, _ := utils.FindApp(args[0])
-		appManifest.Parse()
 
-		// Pre-uninstall scripts
-		for _, script := range appManifest.Uninstall.Scripts {
-			scriptPath := utils.ExpandPath(app.Path, script.Path)
-			if script.Type == "pre" {
-				utils.RunScript(scriptPath)
+		if app.Name != "" {
+			appManifest.Parse()
+
+			// Pre-uninstall scripts
+			for _, script := range appManifest.Uninstall.Scripts {
+				if script.Type == "pre" {
+					scriptPath := utils.ExpandPath(app.Path, script.Path)
+					utils.RunScript(scriptPath)
+				}
 			}
-		}
-		// Symlink
-		for _, symlink := range appManifest.Uninstall.Symlinks {
-			os.Remove(symlink.Target)
-		}
-		// Registry
-		for _, reg := range appManifest.Uninstall.Reg {
-			regCmd := exec.Command(
-				"reg", "import", utils.ExpandPath(app.Path, reg.Path),
+			// Symlink
+			for _, symlink := range appManifest.Uninstall.Symlinks {
+				os.Remove(symlink.Target)
+			}
+			// Registry
+			for _, reg := range appManifest.Uninstall.Reg {
+				regCmd := exec.Command(
+					"reg", "import", utils.ExpandPath(app.Path, reg.Path),
+				)
+
+				err := regCmd.Run()
+				if err != nil {
+					log.Fatal(err)
+				}
+			}
+			// Delete
+			for _, file := range appManifest.Uninstall.Delete {
+				err := os.RemoveAll(file.Path)
+				if err != nil {
+					log.Fatal(err)
+				}
+			}
+			// Post-uninstall scripts
+			for _, script := range appManifest.Uninstall.Scripts {
+				if script.Type == "post" || script.Type == "" {
+					scriptPath := utils.ExpandPath(app.Path, script.Path)
+					utils.RunScript(scriptPath)
+				}
+			}
+
+			fmt.Println(
+				"Application \"" + app.Name + "\" successfully uninstalled.",
 			)
-
-			err := regCmd.Run()
-			if err != nil {
-				log.Fatal(err)
-			}
+		} else {
+			log.Fatal("App \"" + args[0] + "\" is not in any Tangle.")
 		}
-		// Delete
-		for _, file := range appManifest.Uninstall.Delete {
-			err := os.RemoveAll(file.Path)
-			if err != nil {
-				log.Fatal(err)
-			}
-		}
-		// Post-uninstall scripts
-		for _, script := range appManifest.Uninstall.Scripts {
-			scriptPath := utils.ExpandPath(app.Path, script.Path)
-			if script.Type == "post" || script.Type == "" {
-				utils.RunScript(scriptPath)
-			}
-		}
-		// !!! Add uninstallation complete.
 	},
 }
